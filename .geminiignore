@@ -1,0 +1,2 @@
+# Ignore Gemini CLI specific files and directories
+.gemini/

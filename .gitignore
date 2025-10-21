@@ -1,0 +1,4 @@
+.logs/
+.feedback/
+.gemini/.env
+UPSTREAM/
