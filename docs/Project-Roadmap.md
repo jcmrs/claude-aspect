@@ -44,8 +44,8 @@ This document outlines the detailed, phased implementation plan for building the
     *   **Reference:** This formalizes the interaction model between the user and the AI within our new system. *(See: "Round 1: Human-to-Gemini Translator", Conversation Summary)*.
 
 3.  **Implement Commit Linter:**
-    *   **Task:** Implement an automated commit message linter.
-    *   **Details:** Configure a tool like `commitlint` to automatically validate all commit messages against the rules defined in `COMMIT_PROTOCOL.md` and `SCOPES.md`. This will be triggered by a Git hook (e.g., `commit-msg`).
+    *   **Task:** Implement an automated commit message linter using Deno.
+    *   **Details:** Develop or configure a Deno-native tool to automatically validate all commit messages against the rules defined in `COMMIT_PROTOCOL.md` and `SCOPES.md`. This will be triggered by a Git hook (e.g., `commit-msg`).
     *   **Reference:** This addresses the need to offload the cognitive burden of the protocol from the human user and programmatically enforce its rules. *(See: Feedback on `COMMIT_PROTOCOL.md`)*.
 
 ---
