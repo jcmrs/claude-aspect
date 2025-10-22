@@ -72,3 +72,75 @@ This would transform the Git repository from a passive historical record into an
 **Decision:** The project will pivot to using Deno (with TypeScript) as its primary runtime environment for scripting and automation. This choice is strategic, aiming to create a more robust, elegant, and self-contained tooling solution that is less prone to AI predisposition issues and better supports our methodology.
 
 **Impact:** This decision will influence the implementation of the commit linter (Phase 2, Step 3) and potentially other future tooling, ensuring they are built upon a foundation that maximizes AI effectiveness and minimizes friction.
+
+---
+
+## Entry: 2025-10-22
+
+### Subject: Summary of Completed TDD Cycles and Key Learnings (Phases 2-20)
+
+This entry summarizes the TDD cycles and refactoring efforts undertaken to establish core utilities and a dynamic commit linter.
+
+**1. Core File System Utilities Implementation:**
+
+*   **Feature: `readTextFile` Utility**
+    *   **Branch:** `feature/001/core/read-file-utility`
+    *   **Outcome:** Implemented a Deno utility to read file content.
+    *   **Key Learnings:** Successful first TDD cycle.
+
+*   **Feature: `writeTextFile` Utility**
+    *   **Branch:** `feature/002/core/write-file-utility`
+    *   **Outcome:** Implemented a Deno utility to write file content, including automatic parent directory creation.
+    *   **Key Learnings:** Identified and resolved an issue where `Deno.writeTextFile` does not automatically create parent directories, leading to a test failure and subsequent fix.
+
+*   **Refactor: Extract Shared Test Utilities**
+    *   **Branch:** `chore/003/core/refactor-test-utilities`
+    *   **Outcome:** Created `tests/test_utils.ts` for `setupTestFile` and `teardownTestFile`.
+    *   **Key Learnings:** Improved test maintainability and reduced duplication across test files.
+
+*   **Feature: `pathExists` Utility**
+    *   **Branch:** `feature/004/core/path-exists-utility`
+    *   **Outcome:** Implemented a Deno utility to check if a given file or directory path exists.
+    *   **Key Learnings:** Standard TDD cycle.
+
+*   **Feature: `deletePath` Utility**
+    *   **Branch:** `feature/005/core/delete-path-utility`
+    *   **Outcome:** Implemented a Deno utility to delete files and directories, including recursive deletion.
+    *   **Key Learnings:** Standard TDD cycle.
+
+*   **Refactor: Consolidate FS Utilities**
+    *   **Branch:** `refactor/006/core/consolidate-fs-utils`
+    *   **Outcome:** Consolidated `readTextFile`, `writeTextFile`, `pathExists`, `deletePath` into a single `src/core/fs_utils.ts` module and their tests into `tests/core/fs_utils.test.ts`.
+    *   **Key Learnings:** Improved code organization, simplified imports, and confirmed that consolidation benefits model context by reducing the number of files to read for a given domain. Addressed user's concern about potential `flash` model limitations, concluding benefits outweighed risks for current scope.
+
+**2. Dynamic Commit Linter Implementation:**
+
+*   **Feature: Parse Scopes Protocol**
+    *   **Branch:** `feature/007/protocol/parse-scopes-protocol`
+    *   **Outcome:** Implemented `getDefinedScopes` to parse `SCOPES.md` and extract defined scopes.
+    *   **Key Learnings:** Successfully implemented initial protocol parsing.
+
+*   **Refactor: Dynamic Commit Linter Rules**
+    *   **Branch:** `refactor/008/protocol/dynamic-commit-linter`
+    *   **Outcome:** Created `src/protocol/commit_protocol_parser.ts` with `getDefinedCommitTypes` and `getDefinedCommitStatuses` functions. Updated `scripts/validate-commit.ts` to dynamically read allowed types and statuses from `COMMIT_PROTOCOL.md` and `SCOPES.md`.
+    *   **Key Learnings:** This was a challenging refactor. Repeated failures in path resolution for the Git hook on Windows required multiple iterations, eventually resolved by using `Deno.cwd()` and `join` for robust path construction. Also, identified and fixed a duplicate import issue in `scripts/validate-commit.ts` due to the literal nature of the `replace` tool. This highlighted the importance of precise `old_string` matching.
+
+*   **Feature: Parse Commit Types (Test Addition)**
+    *   **Branch:** `feature/009/protocol/parse-commit-types`
+    *   **Outcome:** Added `tests/protocol/commit_types_parser.test.ts` to specifically test `getDefinedCommitTypes`. The test passed immediately, as the function was already functional from the previous refactor.
+    *   **Key Learnings:** Demonstrated that a feature might already be "green" if its implementation was part of a broader refactor, effectively skipping the "Red" phase for that specific feature.
+
+---
+
+## Entry: 2025-10-22
+
+### Subject: Token Count Management and Input Context
+
+**Insight:** The user's observation highlighted that the token count issue is not solely about the length of the conversation history, but also significantly influenced by the size and complexity of the inputs to my tools (e.g., large file contents, verbose shell command outputs).
+
+**Learning:** My previous compression strategy, focusing only on summarizing conversation history, was incomplete. Future context management must also consider strategies to minimize the token count of tool inputs and outputs. This could involve:
+*   Summarizing large file contents before passing them to me.
+*   Filtering verbose shell command outputs.
+*   Breaking down complex `read_many_files` requests into smaller, targeted reads.
+
+**Impact:** This understanding will inform future refinements to my operational protocols and tool usage to ensure more efficient and reliable interaction within token limits.
