@@ -3,12 +3,19 @@ import { readTextFile } from "../core/fs_utils.ts";
 export async function getDefinedCommitTypes(filePath: string): Promise<string[]> {
   const content = await readTextFile(filePath);
   const types: string[] = [];
+  const lines = content.split('\n');
 
-  const typeSectionMatch = content.match(/### 2.1. Type[\s\S]*?\n([\s\S]*?)(?=\n\n### 2.2. Scope)/); // More robust match for the section
-  if (typeSectionMatch && typeSectionMatch[1]) {
-    const typeLines = typeSectionMatch[1].split('\n');
-    for (const line of typeLines) {
-      const match = line.match(/^\*\s+\*\*(\w+):/); // Simplified regex for type extraction
+  let inTypeSection = false;
+  for (const line of lines) {
+    if (line.includes('### 2.1. Type')) {
+      inTypeSection = true;
+      continue;
+    }
+    if (inTypeSection) {
+      if (line.includes('### 2.2. Scope')) { // End of type section
+        break;
+      }
+      const match = line.match(/^\*\s+\*\*(\w+):/); // Match lines like "*   **feat:**"
       if (match && match[1]) {
         types.push(match[1]);
       }
@@ -39,4 +46,25 @@ export async function getDefinedCommitStatuses(filePath: string): Promise<string
     }
   }
   return statuses;
+}
+
+export async function getSubjectRules(filePath: string): Promise<{ maxLength: number; noTrailingPeriod: boolean }> {
+  const content = await readTextFile(filePath);
+  let maxLength = 0;
+  let noTrailingPeriod = false;
+
+  const subjectSectionMatch = content.match(/### 2.3. Subject([\s\S]*?)(?=\n\n### 2.4. Body)/);
+  if (subjectSectionMatch && subjectSectionMatch[1]) {
+    const subjectSection = subjectSectionMatch[1];
+
+    const maxLengthMatch = subjectSection.match(/no longer than (\d+) characters/);
+    if (maxLengthMatch && maxLengthMatch[1]) {
+      maxLength = parseInt(maxLengthMatch[1], 10);
+    }
+
+    if (subjectSection.includes("It must not end with a period.")) {
+      noTrailingPeriod = true;
+    }
+  }
+  return { maxLength, noTrailingPeriod };
 }

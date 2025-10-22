@@ -1,5 +1,5 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/assert_equals.ts";
-import { getDefinedCommitTypes, getDefinedCommitStatuses } from "../../src/protocol/commit_protocol_parser.ts";
+import { getDefinedCommitTypes, getDefinedCommitStatuses, getSubjectRules } from "../../src/protocol/commit_protocol_parser.ts";
 import { setupTestFile, teardownTestFile } from "../test_utils.ts";
 
 Deno.test("getDefinedCommitTypes should correctly parse commit types from COMMIT_PROTOCOL.md", async () => {
@@ -53,6 +53,33 @@ Footers are used for machine-readable signals and metadata.
       "Awaiting Clarification.",
       "Awaiting Debug/Correction.",
     ]);
+  } finally {
+    await teardownTestFile(testProtocolPath);
+  }
+});
+
+Deno.test("getSubjectRules should correctly parse subject rules from COMMIT_PROTOCOL.md", async () => {
+  const testProtocolPath = "./test_data/COMMIT_PROTOCOL.md";
+  const protocolContent = `
+# Git Commit Communication Protocol
+
+### 2.3. Subject
+
+The \`subject\` is mandatory. It is a short, imperative-tense description of the change.
+
+*   It must not end with a period.
+*   It should be capitalized.
+*   It should ideally be no longer than 72 characters.
+*   *Example:* \`Add failing test for email display\`
+
+### 2.4. Body
+  `;
+  await setupTestFile(testProtocolPath, protocolContent);
+
+  try {
+    const rules = await getSubjectRules(testProtocolPath);
+    assertEquals(rules.maxLength, 72);
+    assertEquals(rules.noTrailingPeriod, true);
   } finally {
     await teardownTestFile(testProtocolPath);
   }
