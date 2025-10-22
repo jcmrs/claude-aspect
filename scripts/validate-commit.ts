@@ -15,6 +15,39 @@ function exitWithError(message: string) {
   Deno.exit(1);
 }
 
+function validateType(type: string, allowedTypes: string[]) {
+  if (!allowedTypes || !allowedTypes.includes(type)) {
+    exitWithError(`Invalid commit type: "${type}". Allowed types are: ${allowedTypes?.join(', ')}.`);
+  }
+}
+
+function validateScope(scope: string, definedScopes: string[]) {
+  if (scope && (!definedScopes || !definedScopes.includes(scope))) {
+    exitWithError(`Invalid commit scope: "${scope}". Defined scopes are: ${definedScopes?.join(', ')}.`);
+  }
+}
+
+function validateSubject(subject: string, subjectRules: { maxLength: number; noTrailingPeriod: boolean }) {
+  if (subjectRules.maxLength > 0 && subject.length > subjectRules.maxLength) {
+    exitWithError(`Subject line too long (${subject.length} chars). Max ${subjectRules.maxLength} characters.`);
+  }
+  if (subjectRules.noTrailingPeriod && subject.endsWith('.')) {
+    exitWithError("Subject line must not end with a period.");
+  }
+}
+
+function validateFooters(footers: Record<string, string>, allowedStatuses: string[]) {
+  if (footers.Status) {
+    if (!allowedStatuses || !allowedStatuses.includes(footers.Status)) {
+      exitWithError(`Invalid Status footer: "${footers.Status}". Allowed statuses are: ${allowedStatuses.join(', ') || 'None defined'}.`);
+    }
+  }
+  if (footers.Directive) {
+    // More complex validation for Directive format would go here
+    // For now, just check for presence if expected
+  }
+}
+
 async function validateCommitMessage(commitMessage: string) {
   const allowedTypes = await getDefinedCommitTypes(COMMIT_PROTOCOL_PATH);
   const definedScopes = await getDefinedScopes(SCOPES_PATH);
@@ -31,35 +64,10 @@ async function validateCommitMessage(commitMessage: string) {
 
 
   // --- Implement Validation Rules Here ---
-  // 1. Validate Type
-  if (!allowedTypes || !allowedTypes.includes(type)) {
-    exitWithError(`Invalid commit type: "${type}". Allowed types are: ${allowedTypes?.join(', ')}.`);
-  }
-
-  // 2. Validate Scope
-  if (scope && (!definedScopes || !definedScopes.includes(scope))) {
-    exitWithError(`Invalid commit scope: "${scope}". Defined scopes are: ${definedScopes?.join(', ')}.`);
-  }
-
-  // 3. Validate Subject
-  if (subjectRules.maxLength > 0 && subject.length > subjectRules.maxLength) {
-    exitWithError(`Subject line too long (${subject.length} chars). Max ${subjectRules.maxLength} characters.`);
-  }
-  if (subjectRules.noTrailingPeriod && subject.endsWith('.')) {
-    exitWithError("Subject line must not end with a period.");
-  }
-
-  // 4. Validate Footers
-  if (footers.Status) {
-    if (!allowedStatuses || !allowedStatuses.includes(footers.Status)) {
-      exitWithError(`Invalid Status footer: "${footers.Status}". Allowed statuses are: ${allowedStatuses.join(', ') || 'None defined'}.`);
-    }
-  }
-
-  if (footers.Directive) {
-    // More complex validation for Directive format would go here
-    // For now, just check for presence if expected
-  }
+  validateType(type, allowedTypes);
+  validateScope(scope, definedScopes);
+  validateSubject(subject, subjectRules);
+  validateFooters(footers, allowedStatuses);
 
   console.log("✅ Commit message is valid.");
   Deno.exit(0);
