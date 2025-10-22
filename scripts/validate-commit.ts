@@ -91,11 +91,13 @@ function validateCommitMessage(commitMessage: string) {
 
   // 4. Validate Footers
   if (footers.Status) {
-    const statusSectionMatch = protocolContent.match(/\*\*`Status:`\*\* \(Mandatory for AI Commits\):([\s\S]*?)(?=\n\n\*   \*\*`Directive:`)/);
-    let allowedStatuses: string[] = [];
-    if (statusSectionMatch && statusSectionMatch[1]) {
-      allowedStatuses = statusSectionMatch[1].match(/`(.+?)`/g)?.map(s => s.replace(/`/g, '')) || [];
-    }
+    const allowedStatuses = [
+      "Ready for Green Phase.",
+      "Ready for Refactor Phase.",
+      "Task Done.",
+      "Awaiting Clarification.",
+      "Awaiting Debug/Correction.",
+    ];
 
     if (!allowedStatuses || !allowedStatuses.includes(footers.Status)) {
       exitWithError(`Invalid Status footer: "${footers.Status}". Allowed statuses are: ${allowedStatuses.join(', ') || 'None defined'}.`);
