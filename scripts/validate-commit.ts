@@ -1,12 +1,12 @@
-import { parse } from "https://deno.land/std@0.224.0/flags/mod.ts"; // Pin to a known stable version
-import { join, resolve } from "https://deno.land/std@0.224.0/path/mod.ts";
-import { getDefinedCommitTypes, getDefinedCommitStatuses } from "../src/protocol/commit_protocol_parser.ts";
+import { parse } from "https://deno.land/std@0.224.0/flags/mod.ts";
+import { join } from "https://deno.land/std@0.224.0/path/mod.ts";
+import { getDefinedCommitTypes, getDefinedCommitStatuses, getSubjectRules } from "../src/protocol/commit_protocol_parser.ts";
 import { getDefinedScopes } from "../src/protocol/scopes_parser.ts";
 
 // --- Configuration & Protocol Paths ---
 let PROJECT_ROOT = ""; // Will be set from command line argument
-let COMMIT_PROTOCOL_PATH: string;
-let SCOPES_PATH: string;
+const COMMIT_PROTOCOL_RELATIVE_PATH = "docs/COMMIT_PROTOCOL.md";
+const SCOPES_RELATIVE_PATH = "docs/SCOPES.md";
 
 // --- Helper Functions ---
 function exitWithError(message: string) {
@@ -59,6 +59,7 @@ async function validateCommitMessage(commitMessage: string) {
   const allowedTypes = await getDefinedCommitTypes(COMMIT_PROTOCOL_PATH);
   const definedScopes = await getDefinedScopes(SCOPES_PATH);
   const allowedStatuses = await getDefinedCommitStatuses(COMMIT_PROTOCOL_PATH);
+  const subjectRules = await getSubjectRules(COMMIT_PROTOCOL_PATH);
 
   const { type, scope, subject, body, footers } = parseCommitMessage(commitMessage);
 
@@ -66,6 +67,7 @@ async function validateCommitMessage(commitMessage: string) {
   if (!allowedTypes || allowedTypes.length === 0) exitWithError("Could not load allowed commit types from protocol.");
   if (!definedScopes || definedScopes.length === 0) exitWithError("Could not load defined scopes from protocol.");
   if (!allowedStatuses || allowedStatuses.length === 0) exitWithError("Could not load allowed commit statuses from protocol.");
+  if (!subjectRules) exitWithError("Could not load subject rules from protocol.");
 
 
   // --- Implement Validation Rules Here ---
@@ -80,13 +82,12 @@ async function validateCommitMessage(commitMessage: string) {
   }
 
   // 3. Validate Subject
-  if (subject.length > 72) {
-    exitWithError(`Subject line too long (${subject.length} chars). Max 72 characters.`);
+  if (subjectRules.maxLength > 0 && subject.length > subjectRules.maxLength) {
+    exitWithError(`Subject line too long (${subject.length} chars). Max ${subjectRules.maxLength} characters.`);
   }
-  if (subject.endsWith('.')) {
+  if (subjectRules.noTrailingPeriod && subject.endsWith('.')) {
     exitWithError("Subject line must not end with a period.");
   }
-  // Add capitalization check if needed
 
   // 4. Validate Footers
   if (footers.Status) {
@@ -107,6 +108,19 @@ async function validateCommitMessage(commitMessage: string) {
 // --- Main Execution ---
 const args = parse(Deno.args);
 const commitMessageFile = args._[0] as string;
+PROJECT_ROOT = args._[1] as string; // Get project root from argument
 
+const COMMIT_PROTOCOL_PATH = join(PROJECT_ROOT, COMMIT_PROTOCOL_RELATIVE_PATH);
+const SCOPES_PATH = join(PROJECT_ROOT, SCOPES_RELATIVE_PATH);
+
+if (!commitMessageFile) { // Ensure commit message file is provided
+  exitWithError("No commit message file provided. Usage: deno run validate-commit.ts <COMMIT_MESSAGE_FILE>");
+}
+if (!PROJECT_ROOT) { // Ensure project root is provided
+  exitWithError("No project root provided. Usage: deno run validate-commit.ts <COMMIT_MESSAGE_FILE> <PROJECT_ROOT>");
+}
+
+const commitMessage = Deno.readTextFileSync(commitMessageFile); // Read the commit message
+await validateCommitMessage(commitMessage); // Run validation
 
 
