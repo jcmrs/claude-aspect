@@ -1,14 +1,16 @@
 import { parse } from "https://deno.land/std@0.224.0/flags/mod.ts"; // Pin to a known stable version
+import { join, resolve } from "https://deno.land/std@0.224.0/path/mod.ts";
+import { getDefinedCommitTypes, getDefinedCommitStatuses } from "../src/protocol/commit_protocol_parser.ts";
+import { getDefinedScopes } from "../src/protocol/scopes_parser.ts";
 
-// --- Configuration ---
-const COMMIT_PROTOCOL_PATH = "./docs/COMMIT_PROTOCOL.md";
-const SCOPES_PATH = "./docs/SCOPES.md";
+// --- Configuration & Protocol Paths ---
+let PROJECT_ROOT = ""; // Will be set from command line argument
+let COMMIT_PROTOCOL_PATH: string;
+let SCOPES_PATH: string;
 
 // --- Helper Functions ---
 function exitWithError(message: string) {
-  console.error(`
-❌ Commit Validation Error: ${message}
-`);
+  console.error(`\n❌ Commit Validation Error: ${message}\n`);
   Deno.exit(1);
 }
 
@@ -53,29 +55,26 @@ function parseCommitMessage(message: string): { type: string; scope: string; sub
   return { type, scope, subject, body: body.trim(), footers };
 }
 
-function loadProtocol(path: string): string {
-  try {
-    return Deno.readTextFileSync(path);
-  } catch (error) {
-    exitWithError(`Failed to load protocol document: ${path}. Error: ${error.message}`);
-  }
-}
-
-function validateCommitMessage(commitMessage: string) {
-  const protocolContent = loadProtocol(COMMIT_PROTOCOL_PATH);
-  const scopesContent = loadProtocol(SCOPES_PATH);
+async function validateCommitMessage(commitMessage: string) {
+  const allowedTypes = await getDefinedCommitTypes(COMMIT_PROTOCOL_PATH);
+  const definedScopes = await getDefinedScopes(SCOPES_PATH);
+  const allowedStatuses = await getDefinedCommitStatuses(COMMIT_PROTOCOL_PATH);
 
   const { type, scope, subject, body, footers } = parseCommitMessage(commitMessage);
 
+  // Ensure all necessary protocol data was loaded
+  if (!allowedTypes || allowedTypes.length === 0) exitWithError("Could not load allowed commit types from protocol.");
+  if (!definedScopes || definedScopes.length === 0) exitWithError("Could not load defined scopes from protocol.");
+  if (!allowedStatuses || allowedStatuses.length === 0) exitWithError("Could not load allowed commit statuses from protocol.");
+
+
   // --- Implement Validation Rules Here ---
   // 1. Validate Type
-  const allowedTypes = protocolContent.match(/\*\*feat:\*\*|\*\*fix:\*\*|\*\*test:\*\*|\*\*refactor:\*\*|\*\*chore:\*\*|\*\*docs:\*\*|\*\*clarify:\*\*|\*\*signal:\*\*/g)?.map(s => s.replace(/\*\*/g, '').replace(':', ''));
   if (!allowedTypes || !allowedTypes.includes(type)) {
     exitWithError(`Invalid commit type: "${type}". Allowed types are: ${allowedTypes?.join(', ')}.`);
   }
 
   // 2. Validate Scope
-  const definedScopes = scopesContent.match(/\*\*(.+?):\*\*/g)?.map(s => s.replace(/\*\*/g, '').replace(':', ''));
   if (scope && (!definedScopes || !definedScopes.includes(scope))) {
     exitWithError(`Invalid commit scope: "${scope}". Defined scopes are: ${definedScopes?.join(', ')}.`);
   }
@@ -91,14 +90,6 @@ function validateCommitMessage(commitMessage: string) {
 
   // 4. Validate Footers
   if (footers.Status) {
-    const allowedStatuses = [
-      "Ready for Green Phase.",
-      "Ready for Refactor Phase.",
-      "Task Done.",
-      "Awaiting Clarification.",
-      "Awaiting Debug/Correction.",
-    ];
-
     if (!allowedStatuses || !allowedStatuses.includes(footers.Status)) {
       exitWithError(`Invalid Status footer: "${footers.Status}". Allowed statuses are: ${allowedStatuses.join(', ') || 'None defined'}.`);
     }
@@ -117,9 +108,5 @@ function validateCommitMessage(commitMessage: string) {
 const args = parse(Deno.args);
 const commitMessageFile = args._[0] as string;
 
-if (!commitMessageFile) {
-  exitWithError("No commit message file provided. Usage: deno run validate-commit.ts <COMMIT_MESSAGE_FILE>");
-}
 
-const commitMessage = Deno.readTextFileSync(commitMessageFile);
-validateCommitMessage(commitMessage);
+
