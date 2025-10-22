@@ -1,0 +1,35 @@
+import { assertEquals } from "https://deno.land/std@0.224.0/assert/assert_equals.ts";
+import { getDefinedCommitTypes } from "../../src/protocol/commit_protocol_parser.ts";
+import { setupTestFile, teardownTestFile } from "../test_utils.ts";
+
+Deno.test("getDefinedCommitTypes should correctly parse commit types from COMMIT_PROTOCOL.md", async () => {
+  const testProtocolPath = "./test_data/COMMIT_PROTOCOL.md";
+  const protocolContent = `
+# Git Commit Communication Protocol
+
+## 2. Commit Message Structure
+
+### 2.1. Type
+
+The \`type\` is mandatory and **must** be one of the following exact values, all lowercase:
+
+*   **feat:** A new feature is introduced.
+*   **fix:** A bug fix is introduced.
+*   **test:** Adding a new test.
+*   **refactor:** A code change that improves internal structure.
+*   **chore:** Changes to the build process.
+*   **docs:** Documentation only changes.
+*   **clarify:** A special type for AI clarification.
+*   **signal:** A special type for External Agent signals.
+
+### 2.2. Scope
+  `;
+  await setupTestFile(testProtocolPath, protocolContent);
+
+  try {
+    const types = await getDefinedCommitTypes(testProtocolPath);
+    assertEquals(types, ["feat", "fix", "test", "refactor", "chore", "docs", "clarify", "signal"]);
+  } finally {
+    await teardownTestFile(testProtocolPath);
+  }
+});
